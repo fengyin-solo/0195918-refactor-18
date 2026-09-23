@@ -32,14 +32,7 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import { useCanvasStore } from '@/stores/canvas'
-import TextElement from './elements/TextElement.vue'
-import RectElement from './elements/RectElement.vue'
-import CircleElement from './elements/CircleElement.vue'
-import LineElement from './elements/LineElement.vue'
-import ImageElement from './elements/ImageElement.vue'
-import BarcodeElement from './elements/BarcodeElement.vue'
-import QrcodeElement from './elements/QrcodeElement.vue'
-import TableElement from './elements/TableElement.vue'
+import { getElementComponent, getDefaultSize } from '@/config/elements'
 import JsBarcode from 'jsbarcode'
 import QRCode from 'qrcode'
 import { ElMessage } from 'element-plus'
@@ -69,9 +62,6 @@ const canvasContainerStyle = computed(() => ({
   transform: `scale(${store.scale})`,
   transformOrigin: 'top left'
 }))
-
-const componentMap = { text: TextElement, rect: RectElement, circle: CircleElement, line: LineElement, image: ImageElement, barcode: BarcodeElement, qrcode: QrcodeElement, table: TableElement }
-const getElementComponent = (type) => componentMap[type] || 'div'
 
 const setElementRef = (id, el) => { if (el) elementRefs.value[id] = el }
 
@@ -180,18 +170,7 @@ const handleDrop = (e) => {
     let x = (e.clientX - rect.left) / store.scale
     let y = (e.clientY - rect.top) / store.scale
     
-    const defaultSize = {
-      text: { width: 100, height: 24 },
-      rect: { width: 80, height: 60 },
-      circle: { width: 60, height: 60 },
-      line: { width: 100, height: 4 },
-      image: { width: 80, height: 80 },
-      barcode: { width: 150, height: 60 },
-      qrcode: { width: 80, height: 80 },
-      table: { width: 200, height: 120 }
-    }
-    
-    const size = defaultSize[item.type] || { width: 100, height: 40 }
+    const size = getDefaultSize(item.type)
     
     // 计算位置并限制在画布内
     x = Math.max(0, Math.min(store.canvasPixelWidth - size.width, Math.round(x - size.width / 2)))

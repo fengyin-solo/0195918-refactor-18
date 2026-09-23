@@ -25,7 +25,7 @@
         </div>
 
         <!-- 文本属性 -->
-        <div v-if="element.type === 'text'" class="property-group">
+        <div v-if="hasGroup('text')" class="property-group">
           <div class="group-title">文本属性</div>
           <el-form-item label="内容">
             <el-input v-model="formData.content" @change="updateProp('content')" />
@@ -48,7 +48,7 @@
         </div>
 
         <!-- 图形属性 -->
-        <div v-if="['rect', 'circle'].includes(element.type)" class="property-group">
+        <div v-if="hasGroup('shape')" class="property-group">
           <div class="group-title">图形属性</div>
           <el-form-item label="填充色">
             <el-color-picker v-model="formData.fillColor" show-alpha @change="updateProp('fillColor')" />
@@ -62,7 +62,7 @@
         </div>
 
         <!-- 线条属性 -->
-        <div v-if="element.type === 'line'" class="property-group">
+        <div v-if="hasGroup('line')" class="property-group">
           <div class="group-title">线条属性</div>
           <el-form-item label="颜色">
             <el-color-picker v-model="formData.strokeColor" @change="updateProp('strokeColor')" />
@@ -73,7 +73,7 @@
         </div>
 
         <!-- 图片属性 -->
-        <div v-if="element.type === 'image'" class="property-group">
+        <div v-if="hasGroup('image')" class="property-group">
           <div class="group-title">图片属性</div>
           <el-form-item label="图片">
             <el-upload action="#" :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleImageUpload">
@@ -86,7 +86,7 @@
         </div>
 
         <!-- 条码属性 -->
-        <div v-if="element.type === 'barcode'" class="property-group">
+        <div v-if="hasGroup('barcode')" class="property-group">
           <div class="group-title">条码属性</div>
           <el-form-item label="内容">
             <el-input v-model="formData.content" @change="updateProp('content')" />
@@ -102,7 +102,7 @@
         </div>
 
         <!-- 二维码属性 -->
-        <div v-if="element.type === 'qrcode'" class="property-group">
+        <div v-if="hasGroup('qrcode')" class="property-group">
           <div class="group-title">二维码属性</div>
           <el-form-item label="内容">
             <el-input v-model="formData.content" @change="updateProp('content')" />
@@ -115,7 +115,7 @@
         </div>
 
         <!-- 表格属性 -->
-        <div v-if="element.type === 'table'" class="property-group">
+        <div v-if="hasGroup('table')" class="property-group">
           <div class="group-title">表格属性</div>
           <el-form-item label="行数">
             <el-input-number v-model="formData.rows" :min="1" :max="20" @change="handleRowsChange" />
@@ -150,7 +150,7 @@
         </div>
 
         <!-- 表格单元格编辑 -->
-        <div v-if="element.type === 'table'" class="property-group">
+        <div v-if="hasGroup('tableCells')" class="property-group">
           <div class="group-title">单元格内容 <span class="hint">(双击画布中的单元格也可编辑)</span></div>
           <div class="cell-editor-grid">
             <div v-for="r in formData.rows" :key="r" class="cell-editor-row">
@@ -195,6 +195,7 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
 import { useCanvasStore } from '@/stores/canvas'
+import { hasPropertyGroup } from '@/config/elements'
 import { ElMessage } from 'element-plus'
 
 const barcodeFormats = [
@@ -215,6 +216,9 @@ const store = useCanvasStore()
 const element = computed(() => store.selectedElement)
 const canAlign = computed(() => store.selectedElementIds.length >= 2)
 const fonts = ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana', 'Microsoft YaHei', 'SimSun', 'SimHei']
+
+// 当前元件在属性面板中应显示的分组，由元件类型统一定义决定
+const hasGroup = (group) => element.value ? hasPropertyGroup(element.value.type, group) : false
 
 // 计算最大值限制
 const maxX = computed(() => element.value ? store.canvasPixelWidth - element.value.width : store.canvasPixelWidth)
