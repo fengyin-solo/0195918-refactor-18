@@ -41,36 +41,29 @@
 <script setup>
 import { computed } from 'vue'
 import { useCanvasStore } from '@/stores/canvas'
+import { ELEMENT_TYPES, getElementIcon, getElementLabel } from '@/config/elementTypes'
 
 const store = useCanvasStore()
 
-const elementTypes = [
-  { type: 'text', label: '文本', icon: 'Document', defaultProps: { content: '双击编辑', fontSize: 14, fontFamily: 'Arial', color: '#000000', bold: false, italic: false } },
-  { type: 'rect', label: '矩形', icon: 'FullScreen', defaultProps: { fillColor: '#ffffff', strokeColor: '#000000', strokeWidth: 1 } },
-  { type: 'circle', label: '圆形', icon: 'CircleCheck', defaultProps: { fillColor: '#ffffff', strokeColor: '#000000', strokeWidth: 1 } },
-  { type: 'line', label: '线条', icon: 'Minus', defaultProps: { strokeColor: '#000000', strokeWidth: 2 } },
-  { type: 'image', label: '图片', icon: 'Picture', defaultProps: { src: 'https://picsum.photos/100/100' } },
-  { type: 'barcode', label: '条码', icon: 'Postcard', defaultProps: { content: '123456789', format: 'CODE128', showText: true } },
-  { type: 'qrcode', label: '二维码', icon: 'Grid', defaultProps: { content: 'https://example.com', errorLevel: 'M' } },
-  { type: 'table', label: '表格', icon: 'Grid', defaultProps: { rows: 3, cols: 3, borderWidth: 1, borderColor: '#000000', cellFontSize: 12, cellFontFamily: 'Arial', cellFontColor: '#000000', cellTextAlign: 'center', cells: {} } }
-]
+// 元件库定义统一来自元件注册表
+const elementTypes = ELEMENT_TYPES
 
 const reversedElements = computed(() => [...store.elements].reverse())
 
 const handleDragStart = (e, item) => {
   e.dataTransfer.effectAllowed = 'copy'
-  e.dataTransfer.setData('application/json', JSON.stringify(item))
+  // 只携带新增元件所需的类型与默认属性，避免把组件/渲染函数等不可序列化内容带入拖放数据
+  e.dataTransfer.setData('application/json', JSON.stringify({
+    type: item.type,
+    defaultProps: item.defaultProps
+  }))
 }
 
 const selectElement = (id) => store.selectElement(id)
 const deleteElement = (id) => store.deleteElement(id)
 const toggleVisibility = (el) => store.updateElement(el.id, { visible: !el.visible })
 
-const getElementIcon = (type) => elementTypes.find(e => e.type === type)?.icon || 'Document'
-const getElementName = (el) => {
-  const names = { text: '文本', rect: '矩形', circle: '圆形', line: '线条', image: '图片', barcode: '条码', qrcode: '二维码', table: '表格' }
-  return names[el.type] || el.type
-}
+const getElementName = (el) => getElementLabel(el.type) || el.type
 </script>
 
 <style lang="scss" scoped>

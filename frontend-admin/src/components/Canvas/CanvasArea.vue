@@ -32,16 +32,7 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import { useCanvasStore } from '@/stores/canvas'
-import TextElement from './elements/TextElement.vue'
-import RectElement from './elements/RectElement.vue'
-import CircleElement from './elements/CircleElement.vue'
-import LineElement from './elements/LineElement.vue'
-import ImageElement from './elements/ImageElement.vue'
-import BarcodeElement from './elements/BarcodeElement.vue'
-import QrcodeElement from './elements/QrcodeElement.vue'
-import TableElement from './elements/TableElement.vue'
-import JsBarcode from 'jsbarcode'
-import QRCode from 'qrcode'
+import { getElementComponent, getDefaultSize, renderElementToCanvas } from '@/config/elementTypes'
 import { ElMessage } from 'element-plus'
 
 const store = useCanvasStore()
@@ -69,9 +60,6 @@ const canvasContainerStyle = computed(() => ({
   transform: `scale(${store.scale})`,
   transformOrigin: 'top left'
 }))
-
-const componentMap = { text: TextElement, rect: RectElement, circle: CircleElement, line: LineElement, image: ImageElement, barcode: BarcodeElement, qrcode: QrcodeElement, table: TableElement }
-const getElementComponent = (type) => componentMap[type] || 'div'
 
 const setElementRef = (id, el) => { if (el) elementRefs.value[id] = el }
 
@@ -180,18 +168,8 @@ const handleDrop = (e) => {
     let x = (e.clientX - rect.left) / store.scale
     let y = (e.clientY - rect.top) / store.scale
     
-    const defaultSize = {
-      text: { width: 100, height: 24 },
-      rect: { width: 80, height: 60 },
-      circle: { width: 60, height: 60 },
-      line: { width: 100, height: 4 },
-      image: { width: 80, height: 80 },
-      barcode: { width: 150, height: 60 },
-      qrcode: { width: 80, height: 80 },
-      table: { width: 200, height: 120 }
-    }
-    
-    const size = defaultSize[item.type] || { width: 100, height: 40 }
+    // 拖到画布时的默认尺寸统一来自元件注册表
+    const size = getDefaultSize(item.type)
     
     // 计算位置并限制在画布内
     x = Math.max(0, Math.min(store.canvasPixelWidth - size.width, Math.round(x - size.width / 2)))
@@ -227,95 +205,9 @@ const renderCanvas = async () => {
   }
 }
 
+// 导出 PNG / BMP 时单个元件的绘制逻辑统一来自元件注册表
 const renderElement = async (ctx, el) => {
-  switch (el.type) {
-    case 'text':
-      ctx.fillStyle = el.color || '#000'
-      ctx.font = `${el.italic ? 'italic ' : ''}${el.bold ? 'bold ' : ''}${el.fontSize || 14}px ${el.fontFamily || 'Arial'}`
-      ctx.textBaseline = 'top'
-      ctx.fillText(el.content || '', 0, 0)
-      break
-    case 'rect':
-      if (el.fillColor && el.fillColor !== 'transparent') { ctx.fillStyle = el.fillColor; ctx.fillRect(0, 0, el.width, el.height) }
-      if (el.strokeWidth) { ctx.strokeStyle = el.strokeColor || '#000'; ctx.lineWidth = el.strokeWidth; ctx.strokeRect(0, 0, el.width, el.height) }
-      break
-    case 'circle':
-      ctx.beginPath()
-      ctx.ellipse(el.width / 2, el.height / 2, el.width / 2, el.height / 2, 0, 0, Math.PI * 2)
-      if (el.fillColor && el.fillColor !== 'transparent') { ctx.fillStyle = el.fillColor; ctx.fill() }
-      if (el.strokeWidth) { ctx.strokeStyle = el.strokeColor || '#000'; ctx.lineWidth = el.strokeWidth; ctx.stroke() }
-      break
-    case 'line':
-      ctx.beginPath(); ctx.moveTo(0, el.height / 2); ctx.lineTo(el.width, el.height / 2)
-      ctx.strokeStyle = el.strokeColor || '#000'; ctx.lineWidth = el.strokeWidth || 2; ctx.stroke()
-      break
-    case 'image':
-      if (el.imageData) {
-        const img = new Image(); img.src = el.imageData
-        await new Promise(r => { img.onload = r; img.onerror = r })
-        ctx.drawImage(img, 0, 0, el.width, el.height)
-      }
-      break
-    case 'barcode':
-      try {
-        const bcCanvas = document.createElement('canvas')
-        JsBarcode(bcCanvas, el.content || '123456', { format: el.format || 'CODE128', displayValue: el.showText !== false })
-        ctx.drawImage(bcCanvas, 0, 0, el.width, el.height)
-      } catch (e) { console.error(e) }
-      break
-    case 'qrcode':
-      try {
-        const qrCanvas = document.createElement('canvas')
-        await QRCode.toCanvas(qrCanvas, el.content || 'https://example.com', { width: el.width, errorCorrectionLevel: el.errorLevel || 'M' })
-        ctx.drawImage(qrCanvas, 0, 0, el.width, el.height)
-      } catch (e) { console.error(e) }
-      break
-    case 'table': {
-      const rows = el.rows || 3
-      const cols = el.cols || 3
-      const bw = el.borderWidth || 1
-      const bc = el.borderColor || '#000000'
-      const cellW = el.width / cols
-      const cellH = el.height / rows
-      const padding = 4
-      ctx.strokeStyle = bc
-      ctx.lineWidth = bw
-      ctx.strokeRect(bw / 2, bw / 2, el.width - bw, el.height - bw)
-      for (let r = 1; r < rows; r++) {
-        ctx.beginPath()
-        ctx.moveTo(0, r * cellH)
-        ctx.lineTo(el.width, r * cellH)
-        ctx.stroke()
-      }
-      for (let c = 1; c < cols; c++) {
-        ctx.beginPath()
-        ctx.moveTo(c * cellW, 0)
-        ctx.lineTo(c * cellW, el.height)
-        ctx.stroke()
-      }
-      const fontSize = el.cellFontSize || 12
-      const fontFamily = el.cellFontFamily || 'Arial'
-      const textAlign = el.cellTextAlign || 'center'
-      ctx.fillStyle = el.cellFontColor || '#000000'
-      ctx.font = `${fontSize}px ${fontFamily}`
-      ctx.textAlign = textAlign
-      ctx.textBaseline = 'middle'
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const text = (el.cells && el.cells[r] && el.cells[r][c]) || ''
-          if (text) {
-            let x
-            if (textAlign === 'left') x = c * cellW + padding
-            else if (textAlign === 'right') x = (c + 1) * cellW - padding
-            else x = c * cellW + cellW / 2
-            const y = r * cellH + cellH / 2
-            ctx.fillText(text, x, y)
-          }
-        }
-      }
-      break
-    }
-  }
+  await renderElementToCanvas(ctx, el)
 }
 
 const exportToBMP = (canvas, filename = 'label.bmp') => {

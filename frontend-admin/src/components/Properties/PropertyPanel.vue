@@ -24,146 +24,85 @@
           </el-form-item>
         </div>
 
-        <!-- 文本属性 -->
-        <div v-if="element.type === 'text'" class="property-group">
-          <div class="group-title">文本属性</div>
-          <el-form-item label="内容">
-            <el-input v-model="formData.content" @change="updateProp('content')" />
-          </el-form-item>
-          <el-form-item label="字体">
-            <el-select v-model="formData.fontFamily" @change="updateProp('fontFamily')">
-              <el-option v-for="f in fonts" :key="f" :label="f" :value="f" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="字号">
-            <el-input-number v-model="formData.fontSize" :min="8" :max="200" @change="updateProp('fontSize')" />
-          </el-form-item>
-          <el-form-item label="颜色">
-            <el-color-picker v-model="formData.color" @change="updateProp('color')" />
-          </el-form-item>
-          <el-form-item label="样式">
-            <el-checkbox v-model="formData.bold" @change="updateProp('bold')">粗体</el-checkbox>
-            <el-checkbox v-model="formData.italic" @change="updateProp('italic')">斜体</el-checkbox>
-          </el-form-item>
-        </div>
-
-        <!-- 图形属性 -->
-        <div v-if="['rect', 'circle'].includes(element.type)" class="property-group">
-          <div class="group-title">图形属性</div>
-          <el-form-item label="填充色">
-            <el-color-picker v-model="formData.fillColor" show-alpha @change="updateProp('fillColor')" />
-          </el-form-item>
-          <el-form-item label="边框色">
-            <el-color-picker v-model="formData.strokeColor" @change="updateProp('strokeColor')" />
-          </el-form-item>
-          <el-form-item label="边框宽">
-            <el-input-number v-model="formData.strokeWidth" :min="0" :max="20" @change="updateProp('strokeWidth')" />
-          </el-form-item>
-        </div>
-
-        <!-- 线条属性 -->
-        <div v-if="element.type === 'line'" class="property-group">
-          <div class="group-title">线条属性</div>
-          <el-form-item label="颜色">
-            <el-color-picker v-model="formData.strokeColor" @change="updateProp('strokeColor')" />
-          </el-form-item>
-          <el-form-item label="粗细">
-            <el-input-number v-model="formData.strokeWidth" :min="1" :max="50" @change="updateProp('strokeWidth')" />
-          </el-form-item>
-        </div>
-
-        <!-- 图片属性 -->
-        <div v-if="element.type === 'image'" class="property-group">
-          <div class="group-title">图片属性</div>
-          <el-form-item label="图片">
-            <el-upload action="#" :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleImageUpload">
-              <el-button type="primary" size="small">选择图片</el-button>
-            </el-upload>
-          </el-form-item>
-          <div v-if="element.imageData" class="image-preview">
-            <img :src="element.imageData" alt="预览" />
+        <!-- 元件专属属性：分类分支由元件注册表的 propertyGroups 字段描述符驱动 -->
+        <div
+          v-for="(group, gi) in propertyGroups"
+          :key="gi"
+          class="property-group"
+        >
+          <div class="group-title">
+            {{ group.title }}
+            <span v-if="group.hint" class="hint">{{ group.hint }}</span>
           </div>
-        </div>
+          <template v-for="field in group.fields" :key="field.key || field.control">
+            <!-- 图片上传（预览图位于表单项外，保持原有结构） -->
+            <template v-if="field.control === 'upload'">
+              <el-form-item :label="field.label">
+                <el-upload action="#" :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleImageUpload">
+                  <el-button type="primary" size="small">选择图片</el-button>
+                </el-upload>
+              </el-form-item>
+              <div v-if="element.imageData" class="image-preview">
+                <img :src="element.imageData" alt="预览" />
+              </div>
+            </template>
 
-        <!-- 条码属性 -->
-        <div v-if="element.type === 'barcode'" class="property-group">
-          <div class="group-title">条码属性</div>
-          <el-form-item label="内容">
-            <el-input v-model="formData.content" @change="updateProp('content')" />
-          </el-form-item>
-          <el-form-item label="格式">
-            <el-select v-model="formData.format" @change="updateProp('format')">
-              <el-option v-for="f in barcodeFormats" :key="f.value" :label="f.label" :value="f.value" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="文字">
-            <el-checkbox v-model="formData.showText" @change="updateProp('showText')">显示</el-checkbox>
-          </el-form-item>
-        </div>
-
-        <!-- 二维码属性 -->
-        <div v-if="element.type === 'qrcode'" class="property-group">
-          <div class="group-title">二维码属性</div>
-          <el-form-item label="内容">
-            <el-input v-model="formData.content" @change="updateProp('content')" />
-          </el-form-item>
-          <el-form-item label="容错">
-            <el-select v-model="formData.errorLevel" @change="updateProp('errorLevel')">
-              <el-option v-for="l in errorLevels" :key="l.value" :label="l.label" :value="l.value" />
-            </el-select>
-          </el-form-item>
-        </div>
-
-        <!-- 表格属性 -->
-        <div v-if="element.type === 'table'" class="property-group">
-          <div class="group-title">表格属性</div>
-          <el-form-item label="行数">
-            <el-input-number v-model="formData.rows" :min="1" :max="20" @change="handleRowsChange" />
-          </el-form-item>
-          <el-form-item label="列数">
-            <el-input-number v-model="formData.cols" :min="1" :max="20" @change="handleColsChange" />
-          </el-form-item>
-          <el-form-item label="边框色">
-            <el-color-picker v-model="formData.borderColor" @change="updateProp('borderColor')" />
-          </el-form-item>
-          <el-form-item label="边框宽">
-            <el-input-number v-model="formData.borderWidth" :min="0" :max="10" @change="updateProp('borderWidth')" />
-          </el-form-item>
-          <el-form-item label="字号">
-            <el-input-number v-model="formData.cellFontSize" :min="6" :max="72" @change="updateProp('cellFontSize')" />
-          </el-form-item>
-          <el-form-item label="字体">
-            <el-select v-model="formData.cellFontFamily" @change="updateProp('cellFontFamily')">
-              <el-option v-for="f in fonts" :key="f" :label="f" :value="f" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="字色">
-            <el-color-picker v-model="formData.cellFontColor" @change="updateProp('cellFontColor')" />
-          </el-form-item>
-          <el-form-item label="对齐">
-            <el-select v-model="formData.cellTextAlign" @change="updateProp('cellTextAlign')">
-              <el-option label="左对齐" value="left" />
-              <el-option label="居中" value="center" />
-              <el-option label="右对齐" value="right" />
-            </el-select>
-          </el-form-item>
-        </div>
-
-        <!-- 表格单元格编辑 -->
-        <div v-if="element.type === 'table'" class="property-group">
-          <div class="group-title">单元格内容 <span class="hint">(双击画布中的单元格也可编辑)</span></div>
-          <div class="cell-editor-grid">
-            <div v-for="r in formData.rows" :key="r" class="cell-editor-row">
-              <div v-for="c in formData.cols" :key="c" class="cell-editor-item">
-                <el-input
-                  :model-value="getCellText(r - 1, c - 1)"
-                  size="small"
-                  placeholder=""
-                  @update:model-value="(val) => setCellText(r - 1, c - 1, val)"
-                />
+            <!-- 表格单元格内容编辑 -->
+            <div v-else-if="field.control === 'cellGrid'" class="cell-editor-grid">
+              <div v-for="r in formData.rows" :key="r" class="cell-editor-row">
+                <div v-for="c in formData.cols" :key="c" class="cell-editor-item">
+                  <el-input
+                    :model-value="getCellText(r - 1, c - 1)"
+                    size="small"
+                    placeholder=""
+                    @update:model-value="(val) => setCellText(r - 1, c - 1, val)"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+
+            <!-- 普通表单项 -->
+            <el-form-item v-else :label="field.label">
+              <el-input
+                v-if="field.control === 'input'"
+                v-model="formData[field.key]"
+                @change="onFieldChange(field)"
+              />
+              <el-input-number
+                v-else-if="field.control === 'number'"
+                v-model="formData[field.key]"
+                :min="field.min"
+                :max="field.max"
+                @change="onFieldChange(field)"
+              />
+              <el-color-picker
+                v-else-if="field.control === 'color'"
+                v-model="formData[field.key]"
+                :show-alpha="field.showAlpha"
+                @change="onFieldChange(field)"
+              />
+              <el-select
+                v-else-if="field.control === 'select'"
+                v-model="formData[field.key]"
+                @change="onFieldChange(field)"
+              >
+                <el-option v-for="opt in field.options" :key="opt.value" :label="opt.label" :value="opt.value" />
+              </el-select>
+              <el-checkbox
+                v-else-if="field.control === 'checkbox'"
+                v-model="formData[field.key]"
+                @change="onFieldChange(field)"
+              >{{ field.checkboxLabel }}</el-checkbox>
+              <template v-else-if="field.control === 'checkboxes'">
+                <el-checkbox
+                  v-for="cb in field.checkboxes"
+                  :key="cb.key"
+                  v-model="formData[cb.key]"
+                  @change="updateProp(cb.key)"
+                >{{ cb.label }}</el-checkbox>
+              </template>
+            </el-form-item>
+          </template>
         </div>
 
         <!-- 操作按钮 -->
@@ -195,26 +134,15 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
 import { useCanvasStore } from '@/stores/canvas'
+import { getAllDefaultProps, getPropertyGroups } from '@/config/elementTypes'
 import { ElMessage } from 'element-plus'
-
-const barcodeFormats = [
-  { value: 'CODE128', label: 'Code 128' },
-  { value: 'CODE39', label: 'Code 39' },
-  { value: 'EAN13', label: 'EAN-13' },
-  { value: 'EAN8', label: 'EAN-8' }
-]
-
-const errorLevels = [
-  { value: 'L', label: '低 (7%)' },
-  { value: 'M', label: '中 (15%)' },
-  { value: 'Q', label: '较高 (25%)' },
-  { value: 'H', label: '高 (30%)' }
-]
 
 const store = useCanvasStore()
 const element = computed(() => store.selectedElement)
 const canAlign = computed(() => store.selectedElementIds.length >= 2)
-const fonts = ['Arial', 'Helvetica', 'Times New Roman', 'Georgia', 'Verdana', 'Microsoft YaHei', 'SimSun', 'SimHei']
+
+// 属性面板分类分支来自元件注册表
+const propertyGroups = computed(() => element.value ? getPropertyGroups(element.value.type) : [])
 
 // 计算最大值限制
 const maxX = computed(() => element.value ? store.canvasPixelWidth - element.value.width : store.canvasPixelWidth)
@@ -222,14 +150,10 @@ const maxY = computed(() => element.value ? store.canvasPixelHeight - element.va
 const maxWidth = computed(() => element.value ? store.canvasPixelWidth - element.value.x : store.canvasPixelWidth)
 const maxHeight = computed(() => element.value ? store.canvasPixelHeight - element.value.y : store.canvasPixelHeight)
 
+// 表单初始值由各元件在注册表中的默认属性汇总而来
 const formData = reactive({
   x: 0, y: 0, width: 100, height: 40, rotation: 0,
-  content: '', fontSize: 14, fontFamily: 'Arial', color: '#000000', bold: false, italic: false,
-  fillColor: '#ffffff', strokeColor: '#000000', strokeWidth: 1,
-  format: 'CODE128', showText: true, errorLevel: 'M',
-  rows: 3, cols: 3, borderWidth: 1, borderColor: '#000000',
-  cellFontSize: 12, cellFontFamily: 'Arial', cellFontColor: '#000000', cellTextAlign: 'center',
-  cells: {}
+  ...getAllDefaultProps()
 })
 
 watch(element, (el) => {
@@ -250,6 +174,14 @@ const updateProp = (key) => {
     if (key === 'height') value = Math.min(value, store.canvasPixelHeight - element.value.y)
     store.updateElement(element.value.id, { [key]: value })
   }
+}
+
+// 字段描述符变更分发：默认走 updateProp，注册表中声明了自定义 change 的走对应处理器
+const fieldChangeHandlers = {}
+const onFieldChange = (field) => {
+  const handler = field.change && fieldChangeHandlers[field.change]
+  if (handler) handler(formData[field.key])
+  else updateProp(field.key)
 }
 
 const handleImageUpload = (file) => {
@@ -295,13 +227,14 @@ const rebuildCells = (newRows, newCols) => {
   return newCells
 }
 
-const handleRowsChange = (val) => {
+// 表格行/列数变化时重建单元格内容（在注册表字段描述符中以 change: 'tableRows'/'tableCols' 引用）
+fieldChangeHandlers.tableRows = (val) => {
   const cells = rebuildCells(val, formData.cols)
   formData.cells = cells
   store.updateElement(element.value.id, { rows: val, cells })
 }
 
-const handleColsChange = (val) => {
+fieldChangeHandlers.tableCols = (val) => {
   const cells = rebuildCells(formData.rows, val)
   formData.cells = cells
   store.updateElement(element.value.id, { cols: val, cells })
